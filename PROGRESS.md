@@ -399,3 +399,33 @@ Upgraded ASR model from `nvidia/parakeet-ctc-0.6b` to `nvidia/parakeet-tdt-0.6b-
 - Partials stream every ~1 second, progressively growing as context accumulates
 - Final transcript emitted on session close
 - Server: NeMo 2.7.0, torch 2.10.0+cu128, 2x RTX 3060
+
+## 2026-03-19 (Evening)
+
+### Voxtral Removed — WhisperLive Integrated
+
+Voxtral Realtime 4B was architecturally incompatible with the installed vLLM version (the `voxtral_realtime` architecture was unrecognized by vLLM 0.17.1, and upgrading `transformers` caused NeMo dependency conflicts). Decided to remove Voxtral entirely and replace it with Collabora's **WhisperLive** using the `large-v3-turbo` model via `faster-whisper`.
+
+**Voxtral removal**:
+- Deleted `voxtral_adapter.py`, `scripts/deploy_voxtral.sh`, `scripts/run_vllm.sh`
+- Removed all Voxtral/vLLM references from `server.py`, `config.py`, `run_server.sh`, `test_client.py`
+- Replaced `"voxtral"` engine option with `"whisperlive"` in `AppState.swift`
+
+**WhisperLive integration**:
+- Cloned `collabora/WhisperLive` into `WhisperLive/` at project root
+- Created `server-cuda/whisperlive_adapter.py` — a `TranscriptionAdapter` that opens a WebSocket to the local WhisperLive server (port 9090), sends float32 audio, receives segment JSON, and maps it to `TranscriptResult` objects for the existing `BACKEND_API.md` protocol
+- Created `scripts/deploy_whisperlive.sh` — sets up `venv-whisperlive/` and installs WhisperLive's `requirements/server.txt`
+- Created `scripts/run_whisperlive.sh` — launches WhisperLive on `cuda:1` with `faster_whisper` backend
+- Added `WHISPERLIVE_HOST`, `WHISPERLIVE_PORT`, `WHISPER_MODEL` config variables to `config.py` and `run_server.sh`
+- Updated `server.py` to initialize the WhisperLive adapter at startup when `WHISPERLIVE_HOST` is set
+
+**Bugs fixed during integration**:
+- WhisperLive's `run_server.py` does not accept `--model` as a CLI arg (model is selected per-client); removed from launch script
+- Adapter was passing plain `dict` to `transcript_callback` instead of `TranscriptResult` dataclass — caused `'dict' object has no attribute 'is_final'` error
+- Audio conversion: WhisperLive expects float32 audio, not PCM16 — adapter now converts `int16 → float32` via numpy before sending
+
+**End-to-end test result** (`judge_23sec_16k_mono.wav` → GPU server → test client):
+- 17+ partial transcripts streamed in real time
+- 1 final transcript: *"see a lot of mediocre politicians. They get elected to high office and then we're all"*
+- Clean WebSocket shutdown, no errors
+- Server: WhisperLive on `cuda:1` with `large-v3-turbo` via `faster-whisper`, Jordan server on `cuda:0` with Parakeet

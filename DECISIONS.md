@@ -68,18 +68,19 @@
 - Partials reuse the same `segmentId` so the macOS client's `AppState.handleTranscriptEvent()` updates in-place; finals commit the segment.
 
 ## Multi-Engine Architecture
-- The server now supports multiple transcription engines via a generalized `TranscriptionAdapter` ABC.
-- Engine selection is per-session: the client sends `"engine": "parakeet"` or `"engine": "voxtral"` in the `session.start` message's `transcription` config.
+- The server supports multiple transcription engines via a generalized `TranscriptionAdapter` ABC.
+- Engine selection is per-session: the client sends `"engine": "parakeet"` or `"engine": "whisperlive"` in the `session.start` message's `transcription` config.
 - Default engine remains `"parakeet"` for backward compatibility.
 - **Parakeet** runs in-process on `cuda:0` via NeMo — same as before.
-- **Voxtral Realtime 4B** runs as a separate vLLM process on `cuda:1`, exposing `/v1/realtime` WebSocket. The Jordan server's `VoxtralAdapter` proxies audio (as base64 PCM16) to this local vLLM instance. No cloud API or API key involved — fully local GPU inference.
-- vLLM was chosen over HuggingFace Transformers for Voxtral serving because vLLM provides a production-ready WebSocket streaming endpoint (`/v1/realtime`) out of the box, handles memory management, and supports concurrent requests. Using Transformers would require building a custom streaming pipeline.
-- Voxtral uses a separate venv (`venv-vllm/`) from Parakeet (`venv/`) to avoid dependency conflicts between vLLM and NeMo.
-- The two GPUs on the 3060 box are now fully utilized: GPU 0 for Parakeet, GPU 1 for Voxtral.
+- **WhisperLive** (replacing Voxtral) runs as a separate process on `cuda:1` via Collabora's WhisperLive + `faster-whisper` backend. The Jordan server's `WhisperLiveAdapter` opens a WebSocket to the local WhisperLive instance (port 9090), sends float32 audio, and maps segment JSON back to `TranscriptResult` objects.
+- Voxtral Realtime 4B was removed because vLLM 0.17.1 did not recognize the `voxtral_realtime` architecture, and upgrading `transformers` caused dependency conflicts with NeMo.
+- WhisperLive uses a separate venv (`venv-whisperlive/`) from Parakeet (`venv/`) to avoid dependency conflicts.
+- The two GPUs on the 3060 box are now fully utilized: GPU 0 for Parakeet, GPU 1 for WhisperLive.
+- WhisperLive uses the `large-v3-turbo` Whisper model — fast inference via CTranslate2 under the hood.
 
 ## Open
 - Which Linux box should be the first real deployment target? (dual-3060 box is currently in use)
 - Exact restore gesture for blackout mode.
 - Local persistence design when logging is enabled.
 - Haptic feedback on blackout toggle.
-- Voxtral vs Parakeet quality comparison not yet done — need real-world A/B test once both are deployed.
+- WhisperLive vs Parakeet quality/latency comparison not yet done — need real-world A/B test.

@@ -71,7 +71,7 @@ async def receiver(ws, done_event: asyncio.Event):
         done_event.set()
 
 
-async def sender(ws, audio_file: Optional[Path], done_event: asyncio.Event):
+async def sender(ws, audio_file: Optional[Path], done_event: asyncio.Event, engine: str = "parakeet"):
     """Send session.start, stream audio, then send session.stop."""
     session_id = str(uuid.uuid4())
     print(f"Session ID: {session_id}")
@@ -85,7 +85,7 @@ async def sender(ws, audio_file: Optional[Path], done_event: asyncio.Event):
             "channels": 1,
             "chunkMs": CHUNK_MS,
         },
-        "transcription": {"partials": True, "language": None},
+        "transcription": {"partials": True, "language": None, "engine": engine},
         "client": {"platform": "test", "appVersion": "0.1.0"},
     })
 
@@ -124,7 +124,7 @@ async def sender(ws, audio_file: Optional[Path], done_event: asyncio.Event):
         print("\nTimed out waiting for server to finish (15s). Closing.")
 
 
-async def test_session(host: str, port: int, audio_file: Optional[Path] = None):
+async def test_session(host: str, port: int, audio_file: Optional[Path] = None, engine: str = "parakeet"):
     import websockets
 
     uri = f"ws://{host}:{port}/v1/transcription/stream"
@@ -134,7 +134,7 @@ async def test_session(host: str, port: int, audio_file: Optional[Path] = None):
         done_event = asyncio.Event()
 
         recv_task = asyncio.create_task(receiver(ws, done_event))
-        send_task = asyncio.create_task(sender(ws, audio_file, done_event))
+        send_task = asyncio.create_task(sender(ws, audio_file, done_event, engine))
 
         await asyncio.gather(send_task, recv_task, return_exceptions=True)
 
@@ -151,9 +151,10 @@ def main():
         default=None,
         help="Path to a 16kHz mono WAV file to stream",
     )
+    parser.add_argument("--engine", type=str, default="parakeet", help="Transcription engine (parakeet or whisperlive)")
     args = parser.parse_args()
 
-    asyncio.run(test_session(args.host, args.port, args.audio))
+    asyncio.run(test_session(args.host, args.port, args.audio, args.engine))
 
 
 if __name__ == "__main__":

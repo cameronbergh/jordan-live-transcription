@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 
 from config import config
 from parakeet_adapter import create_parakeet_adapter, TranscriptionAdapter
-from voxtral_adapter import create_voxtral_adapter
+
 from session import TranscriptionSession
 
 logging.basicConfig(
@@ -46,16 +46,17 @@ async def lifespan(app: FastAPI):
 
     adapters["parakeet"] = parakeet
 
-    voxtral = create_voxtral_adapter()
-    if voxtral is not None:
-        try:
-            await voxtral.initialize(config.voxtral_model)
-            adapters["voxtral"] = voxtral
-            logger.info(f"Voxtral adapter initialized (model={config.voxtral_model})")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Voxtral adapter: {e}")
-    else:
-        logger.info("Voxtral adapter skipped (VLLM_HOST not set)")
+    try:
+        from whisperlive_adapter import create_whisperlive_adapter
+        whisperlive = create_whisperlive_adapter()
+        if whisperlive is not None:
+            await whisperlive.initialize(config.whisper_model)
+            adapters["whisperlive"] = whisperlive
+            logger.info(f"WhisperLive adapter initialized (model={config.whisper_model})")
+        else:
+            logger.info("WhisperLive adapter skipped (WHISPERLIVE_HOST not set)")
+    except Exception as e:
+        logger.warning(f"Failed to initialize WhisperLive adapter: {e}")
 
     app.state.adapters = adapters
     logger.info(

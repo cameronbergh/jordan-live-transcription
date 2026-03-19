@@ -37,6 +37,7 @@ venv/
 # Server
 server-cuda/venv/
 server-cuda/venv-vllm/
+server-cuda/venv-whisperlive/
 server-mlx/venv/
 server-cuda/deploy_*.log
 server-mlx/deploy_*.log

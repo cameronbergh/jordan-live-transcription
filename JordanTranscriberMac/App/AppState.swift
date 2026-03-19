@@ -18,7 +18,7 @@ final class AppState: ObservableObject {
 
     static let availableEngines: [(id: String, label: String)] = [
         ("parakeet", "Parakeet (Local GPU)"),
-        ("voxtral", "Voxtral Realtime 4B (Local GPU)"),
+        ("whisperlive", "WhisperLive (large-v3-turbo)"),
     ]
 
     private let audioService = AudioCaptureService()
