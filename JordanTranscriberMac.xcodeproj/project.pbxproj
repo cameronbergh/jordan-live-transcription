@@ -1,0 +1,346 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		3A3308A965E0B49A098D0007 /* JordanTranscriberMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C88B89AC51AD7E9619EE42 /* JordanTranscriberMacApp.swift */; };
+		9DD44EF0831902266E50B997 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F098D6F82B4ECE5B69F4FC6 /* AppState.swift */; };
+		A2147E67D26ED333F83F690F /* AudioCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0339FA7DC4E2363DCFB30076 /* AudioCaptureService.swift */; };
+		A5056FC97E011B600EA5D238 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D045E7105CBA2ACA6A86BB /* MainView.swift */; };
+		E34CD53997D7B7705067C214 /* WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6174F2DCA94C78DA61897A28 /* WebSocketService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0339FA7DC4E2363DCFB30076 /* AudioCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
+		0E6F3D33DE6A0B2ABB5D13E2 /* JordanTranscriberMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = JordanTranscriberMac.entitlements; sourceTree = "<group>"; };
+		5A6194F4F564FC6920F5203C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		6174F2DCA94C78DA61897A28 /* WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketService.swift; sourceTree = "<group>"; };
+		6578435F5BDBCA4D7A35A52D /* JordanTranscriberMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JordanTranscriberMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F098D6F82B4ECE5B69F4FC6 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		96D045E7105CBA2ACA6A86BB /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
+		F6C88B89AC51AD7E9619EE42 /* JordanTranscriberMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JordanTranscriberMacApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		10CD8355E080B57731AD75B8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				5A6194F4F564FC6920F5203C /* Info.plist */,
+				0E6F3D33DE6A0B2ABB5D13E2 /* JordanTranscriberMac.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		1C296BDE720F02462D66504D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6578435F5BDBCA4D7A35A52D /* JordanTranscriberMac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2A0FE66E7F6FA9BE8CEF8262 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				96D045E7105CBA2ACA6A86BB /* MainView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		5246C81EB3065DFCA6087D18 /* JordanTranscriberMac */ = {
+			isa = PBXGroup;
+			children = (
+				D7D4CF9623AB83BC87A35C94 /* App */,
+				10CD8355E080B57731AD75B8 /* Resources */,
+				A7A37630D5D7D97D452EA337 /* Services */,
+				2A0FE66E7F6FA9BE8CEF8262 /* Views */,
+			);
+			path = JordanTranscriberMac;
+			sourceTree = "<group>";
+		};
+		60A9592157AED457DB550EE0 = {
+			isa = PBXGroup;
+			children = (
+				5246C81EB3065DFCA6087D18 /* JordanTranscriberMac */,
+				1C296BDE720F02462D66504D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A7A37630D5D7D97D452EA337 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				0339FA7DC4E2363DCFB30076 /* AudioCaptureService.swift */,
+				6174F2DCA94C78DA61897A28 /* WebSocketService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		D7D4CF9623AB83BC87A35C94 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				8F098D6F82B4ECE5B69F4FC6 /* AppState.swift */,
+				F6C88B89AC51AD7E9619EE42 /* JordanTranscriberMacApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F7986CA319C0C4FCDDB049FF /* JordanTranscriberMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2BC059DDC1F10FF921A22859 /* Build configuration list for PBXNativeTarget "JordanTranscriberMac" */;
+			buildPhases = (
+				63444A33E84441568E01A8AE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = JordanTranscriberMac;
+			packageProductDependencies = (
+			);
+			productName = JordanTranscriberMac;
+			productReference = 6578435F5BDBCA4D7A35A52D /* JordanTranscriberMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BC19C0C58C9524A160B68C11 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					F7986CA319C0C4FCDDB049FF = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 6185AE23D5E0CD80C55FAA36 /* Build configuration list for PBXProject "JordanTranscriberMac" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 60A9592157AED457DB550EE0;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F7986CA319C0C4FCDDB049FF /* JordanTranscriberMac */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		63444A33E84441568E01A8AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9DD44EF0831902266E50B997 /* AppState.swift in Sources */,
+				A2147E67D26ED333F83F690F /* AudioCaptureService.swift in Sources */,
+				3A3308A965E0B49A098D0007 /* JordanTranscriberMacApp.swift in Sources */,
+				A5056FC97E011B600EA5D238 /* MainView.swift in Sources */,
+				E34CD53997D7B7705067C214 /* WebSocketService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2669447C8EF4BC89CC235D3F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = JordanTranscriberMac/Resources/JordanTranscriberMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = JordanTranscriberMac/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordan.transcriber.mac;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		3ABB4E6A69DE0DE75F86A7E9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		E7E152A920AF599C47D92A33 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = JordanTranscriberMac/Resources/JordanTranscriberMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = JordanTranscriberMac/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jordan.transcriber.mac;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		E86EDC8A203E33E9F9460104 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2BC059DDC1F10FF921A22859 /* Build configuration list for PBXNativeTarget "JordanTranscriberMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E7E152A920AF599C47D92A33 /* Debug */,
+				2669447C8EF4BC89CC235D3F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6185AE23D5E0CD80C55FAA36 /* Build configuration list for PBXProject "JordanTranscriberMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E86EDC8A203E33E9F9460104 /* Debug */,
+				3ABB4E6A69DE0DE75F86A7E9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = BC19C0C58C9524A160B68C11 /* Project object */;
+}

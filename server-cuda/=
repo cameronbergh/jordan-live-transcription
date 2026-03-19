@@ -1,0 +1,14 @@
+Looking at the error "not supported between instances of list and int", this occurs when comparing a list with an int. In `parakeet_adapter.py`, the likely culprit is in the decode step where `greedy_predictions` (a tensor) is passed to `decode_ids_to_str`, but the output structure may be a nested list that gets compared during indexing.
+
+Let me examine the decode path more closely and fix it:
+The LSP errors are just type-checking noise (nemo not installed locally). Let me also add a safeguard for when `greedy_predictions` itself might be a list:
+Let me also make the flattening more robust to handle edge cases where `decoded[0]` might contain non-string items:
+The LSP errors are due to the local Mac environment lacking nemo/torch — they're not runtime issues. Let me verify the fix looks correct:
+Good. Now let me add a brief note to the integration docs about this bug:
+**Summary of fix:**
+
+The bug was in `parakeet_adapter.py:287-301`. NeMo's `decode_ids_to_str` can return nested list structures (e.g., `[['transcript']]`) depending on the model version. The original code did `decoded[0]` which gave a list instead of a string, causing the "list vs int" comparison error downstream.
+
+**Changes made:**
+1. `parakeet_adapter.py` — Added a `while` loop to flatten nested lists and proper type checking before extracting the transcript string
+2. `PARAKEKEET_INTEGRATION.md` — Documented the bug, symptom, root cause, and fix

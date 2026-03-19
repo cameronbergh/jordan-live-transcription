@@ -1,0 +1,19 @@
+# Jordan CUDA Server — Python Dependencies
+# ==========================================
+# Core server dependencies (install always):
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+websockets>=12.0
+numpy>=1.26.0
+scipy>=1.12.0
+python-multipart>=0.0.9
+pydantic>=2.0.0
+
+# PyTorch with CUDA 12.x support (install on GPU machine):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu121
+# Or install from system package manager if CUDA is configured.
+# torch is NOT listed here to avoid version conflicts — install separately.
+
+# NeMo Toolkit with ASR (install on GPU machine after torch):
+#   pip install nemo-toolkit[asr]
+# nemo-toolkit is NOT listed here to avoid dependency conflicts — install separately.
