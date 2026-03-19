@@ -39,8 +39,10 @@ final class WebSocketService: NSObject {
     private let maxReconnectAttempts = 10
     private var reconnectWorkItem: DispatchWorkItem?
     private var shouldReconnect = false
+    private var currentEngine: String = "parakeet"
 
-    func connect(host: String, port: Int) {
+    func connect(host: String, port: Int, engine: String = "parakeet") {
+        currentEngine = engine
         disconnect()
         shouldReconnect = true
         reconnectAttempts = 0
@@ -92,7 +94,8 @@ final class WebSocketService: NSObject {
             ],
             "transcription": [
                 "partials": true,
-                "language": NSNull()
+                "language": NSNull(),
+                "engine": currentEngine
             ],
             "client": [
                 "platform": "macos",

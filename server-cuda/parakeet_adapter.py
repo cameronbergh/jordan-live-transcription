@@ -25,7 +25,7 @@ class TranscriptResult:
 TranscriptCallback = Callable[[TranscriptResult], Awaitable[None]]
 
 
-class ParakeetAdapter(ABC):
+class TranscriptionAdapter(ABC):
     @abstractmethod
     async def initialize(self, model_name: str) -> None:
         raise NotImplementedError
@@ -48,7 +48,10 @@ class ParakeetAdapter(ABC):
         raise NotImplementedError
 
 
-class MockParakeetAdapter(ParakeetAdapter):
+ParakeetAdapter = TranscriptionAdapter
+
+
+class MockParakeetAdapter(TranscriptionAdapter):
     SAMPLE_PHRASES = [
         "Hello, how are you doing today?",
         "I'm just testing the transcription system.",
@@ -139,7 +142,7 @@ class MockParakeetAdapter(ParakeetAdapter):
         self._initialized = False
 
 
-class RealParakeetAdapter(ParakeetAdapter):
+class RealParakeetAdapter(TranscriptionAdapter):
     def __init__(self):
         self._initialized = False
         self._model = None
@@ -386,7 +389,7 @@ class RealParakeetAdapter(ParakeetAdapter):
             torch.cuda.empty_cache()
 
 
-def create_parakeet_adapter() -> ParakeetAdapter:
+def create_parakeet_adapter() -> TranscriptionAdapter:
     if config.enable_mock_parakeet:
         return MockParakeetAdapter()
     return RealParakeetAdapter()

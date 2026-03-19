@@ -23,6 +23,9 @@
 - [x] Fix test_client.py for concurrent send/receive and robust exit
 - [x] Verify real end-to-end transcription on GPU box with judge_23sec WAV file
 - [x] Build macOS native client app (`JordanTranscriberMac/`) with mic capture, WebSocket streaming, live transcript display
+- [x] Add Voxtral Realtime 4B as second transcription engine (multi-engine server + client model selector)
+- [x] Create deploy_voxtral.sh and run_vllm.sh scripts for vLLM deployment on GPU box
+- [ ] Deploy vLLM + Voxtral to GPU box and verify end-to-end transcription
 - [ ] Lock primary host choice between the dual-3060 box and dual-2080 Ti box
 - [ ] Refactor iOS client transcription layer to talk to backend service
 
@@ -35,6 +38,7 @@
 - [ ] Add haptics when blackout toggles
 - [ ] Complete iOS client to WebSocket backend integration
 - [ ] Improve streaming transcript quality (larger inference windows, sliding window with overlap)
+- [ ] Compare Parakeet vs Voxtral transcription quality and latency on same audio
 
 ## Blockers
 - `RealParakeetAdapter` CTC decoding — **FIXED**: Replaced broken manual decode with NeMo's `ctc_decoder_predictions_tensor()`. End-to-end real transcription confirmed working on `nvidia/parakeet-ctc-0.6b` via GPU box.

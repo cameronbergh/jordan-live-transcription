@@ -341,3 +341,37 @@ Created `JordanTranscriberMac/` — a native macOS SwiftUI app that captures mic
 **Zero external dependencies** — uses only SwiftUI, AVFoundation, Foundation, Combine.
 
 **Build**: `xcodegen generate --spec project-mac.yml && xcodebuild` succeeds with no errors. App launches and connects to the CUDA server.
+
+## 2026-03-19 (Voxtral Integration)
+
+### Multi-Engine Architecture: Voxtral Realtime 4B Added
+
+Added Voxtral Realtime 4B as a second transcription engine alongside Parakeet. Voxtral is Mistral AI's 4B-parameter streaming ASR model, released under Apache 2.0 with open weights on HuggingFace (`mistralai/Voxtral-Mini-4B-Realtime-2602`). It runs locally on GPU via vLLM — no cloud API or API key needed.
+
+**Server architecture changes (`server-cuda/`)**:
+
+- **Generalized adapter pattern**: Renamed `ParakeetAdapter` ABC to `TranscriptionAdapter`. Both `MockParakeetAdapter` / `RealParakeetAdapter` and the new `VoxtralAdapter` implement this interface. Backward-compatible alias `ParakeetAdapter = TranscriptionAdapter` kept.
+- **New `voxtral_adapter.py`**: Connects to a local vLLM instance's `/v1/realtime` WebSocket endpoint. Sends PCM16 audio chunks as base64, receives `transcription.delta` (partials) and `transcription.done` (final). Translates vLLM events into the existing `TranscriptResult` protocol.
+- **Multi-engine `server.py`**: Initializes both Parakeet and Voxtral adapters at startup. Stores them in `app.state.adapters` dict keyed by engine name. The WebSocket handler waits for `session.start` to read the client's `engine` choice from `transcription.engine`, then routes to the correct adapter. Sends a fatal error if an unavailable engine is requested.
+- **`config.py`**: Added `VLLM_HOST`, `VLLM_PORT` (default 8000), `VOXTRAL_MODEL` (default `mistralai/Voxtral-Mini-4B-Realtime-2602`). Voxtral adapter is only created when `VLLM_HOST` is set.
+- **`protocol.py`**: `build_session_started()` now accepts an `engine` parameter, so the `session.started` response tells the client which engine is active.
+- **`session.py`**: Extracts `engine` from `session.start` message's `transcription.engine` field (defaults to `"parakeet"`).
+
+**macOS client changes (`JordanTranscriberMac/`)**:
+
+- **Engine picker**: New radio group in settings popover — "Parakeet (Local GPU)" and "Voxtral Realtime 4B (Local GPU)". Disabled while a session is active.
+- **`AppState.swift`**: Added `@Published var selectedEngine` and static `availableEngines` list.
+- **`WebSocketService.swift`**: `connect()` accepts `engine` parameter; `session.start` message includes `"engine"` in the `transcription` dict.
+
+**Deployment model**:
+- Parakeet runs directly in the Jordan server process on `cuda:0` (via NeMo).
+- Voxtral runs as a separate vLLM process on `cuda:1`, serving `/v1/realtime`.
+- The Jordan server proxies audio to vLLM over a local WebSocket when Voxtral is selected.
+- Both models fit on the 2x RTX 3060 12GB box (Parakeet ~1.2GB, Voxtral ~8.8GB BF16).
+
+**New scripts**:
+- `scripts/deploy_voxtral.sh` — One-shot setup: creates `venv-vllm/`, installs vLLM + audio deps, pre-downloads model weights.
+- `scripts/run_vllm.sh` — Launches vLLM serving Voxtral on `cuda:1` with `--enforce-eager`.
+- Updated `scripts/run_server.sh` — Now prints vLLM config and passes `VLLM_HOST`/`VLLM_PORT` env vars.
+
+**Deployment pending**: SSH access to `cameron-ms-7b17` was unavailable during this session. Scripts and code are ready; deployment needs SSH keys loaded.

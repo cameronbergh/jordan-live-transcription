@@ -13,7 +13,13 @@ final class AppState: ObservableObject {
     @Published var connectionState: ConnectionState = .disconnected
     @Published var serverHost: String = "cameron-ms-7b17"
     @Published var serverPort: Int = 8765
+    @Published var selectedEngine: String = "parakeet"
     @Published var fontSize: CGFloat = 18
+
+    static let availableEngines: [(id: String, label: String)] = [
+        ("parakeet", "Parakeet (Local GPU)"),
+        ("voxtral", "Voxtral Realtime 4B (Local GPU)"),
+    ]
 
     private let audioService = AudioCaptureService()
     private let wsService = WebSocketService()
@@ -49,7 +55,7 @@ final class AppState: ObservableObject {
 
     func start() {
         transcriptSegments.removeAll()
-        wsService.connect(host: serverHost, port: serverPort)
+        wsService.connect(host: serverHost, port: serverPort, engine: selectedEngine)
 
         // Start mic capture once we're connected
         wsService.stateSubject

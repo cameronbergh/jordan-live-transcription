@@ -30,6 +30,17 @@ class ServerConfig:
     server_hostname: str = field(
         default_factory=lambda: os.getenv("SERVER_HOSTNAME", "cameron-ms-7b17")
     )
+    vllm_host: str = field(
+        default_factory=lambda: os.getenv("VLLM_HOST", "")
+    )
+    vllm_port: int = field(
+        default_factory=lambda: int(os.getenv("VLLM_PORT", "8000"))
+    )
+    voxtral_model: str = field(
+        default_factory=lambda: os.getenv(
+            "VOXTRAL_MODEL", "mistralai/Voxtral-Mini-4B-Realtime-2602"
+        )
+    )
 
 
 DEFAULT_AUDIO_CONFIG = {

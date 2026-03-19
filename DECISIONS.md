@@ -59,9 +59,20 @@
 - Manual CTC decode approaches were tried and failed due to: wrong blank token ID assumption (0 vs 1024), missing CTC deduplication, and inability to locate the tokenizer on the model object.
 - On NeMo 2.7.0 (GPU box), `ctc_decoder_predictions_tensor` works correctly.
 
+## Multi-Engine Architecture
+- The server now supports multiple transcription engines via a generalized `TranscriptionAdapter` ABC.
+- Engine selection is per-session: the client sends `"engine": "parakeet"` or `"engine": "voxtral"` in the `session.start` message's `transcription` config.
+- Default engine remains `"parakeet"` for backward compatibility.
+- **Parakeet** runs in-process on `cuda:0` via NeMo — same as before.
+- **Voxtral Realtime 4B** runs as a separate vLLM process on `cuda:1`, exposing `/v1/realtime` WebSocket. The Jordan server's `VoxtralAdapter` proxies audio (as base64 PCM16) to this local vLLM instance. No cloud API or API key involved — fully local GPU inference.
+- vLLM was chosen over HuggingFace Transformers for Voxtral serving because vLLM provides a production-ready WebSocket streaming endpoint (`/v1/realtime`) out of the box, handles memory management, and supports concurrent requests. Using Transformers would require building a custom streaming pipeline.
+- Voxtral uses a separate venv (`venv-vllm/`) from Parakeet (`venv/`) to avoid dependency conflicts between vLLM and NeMo.
+- The two GPUs on the 3060 box are now fully utilized: GPU 0 for Parakeet, GPU 1 for Voxtral.
+
 ## Open
 - Which Linux box should be the first real deployment target? (dual-3060 box is currently in use)
 - Exact restore gesture for blackout mode.
 - Local persistence design when logging is enabled.
 - Haptic feedback on blackout toggle.
 - Streaming transcript quality: each 0.5s chunk is transcribed independently, producing fragmented text. Larger inference windows or sliding-window overlap would improve coherence.
+- Voxtral vs Parakeet quality comparison not yet done — need real-world A/B test once both are deployed.

@@ -10,7 +10,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
 
 from config import config
-from parakeet_adapter import create_parakeet_adapter, ParakeetAdapter
+from parakeet_adapter import create_parakeet_adapter, TranscriptionAdapter
+from voxtral_adapter import create_voxtral_adapter
 from session import TranscriptionSession
 
 logging.basicConfig(
@@ -24,29 +25,51 @@ logger = logging.getLogger("jordan_server")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Jordan transcription server...")
-    adapter = create_parakeet_adapter()
+    adapters: dict[str, TranscriptionAdapter] = {}
+
+    parakeet = create_parakeet_adapter()
     try:
-        await adapter.initialize(config.parakeet_model)
-        logger.info(f"Parakeet adapter initialized: {type(adapter).__name__}")
+        await parakeet.initialize(config.parakeet_model)
+        logger.info(f"Parakeet adapter initialized: {type(parakeet).__name__}")
     except Exception as e:
         logger.error(f"Failed to initialize Parakeet adapter: {e}")
         logger.warning("Falling back to mock adapter for development/testing")
         from parakeet_adapter import MockParakeetAdapter
-
-        adapter = MockParakeetAdapter()
-        await adapter.initialize(config.parakeet_model)
+        parakeet = MockParakeetAdapter()
+        await parakeet.initialize(config.parakeet_model)
 
     try:
-        await adapter.warm_up()
+        await parakeet.warm_up()
         logger.info("Parakeet warm-up complete")
     except Exception as e:
-        logger.warning(f"Warm-up failed (non-fatal): {e}")
+        logger.warning(f"Parakeet warm-up failed (non-fatal): {e}")
 
-    app.state.adapter = adapter
-    logger.info(f"Server ready on {config.host}:{config.port}")
+    adapters["parakeet"] = parakeet
+
+    voxtral = create_voxtral_adapter()
+    if voxtral is not None:
+        try:
+            await voxtral.initialize(config.voxtral_model)
+            adapters["voxtral"] = voxtral
+            logger.info(f"Voxtral adapter initialized (model={config.voxtral_model})")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Voxtral adapter: {e}")
+    else:
+        logger.info("Voxtral adapter skipped (VLLM_HOST not set)")
+
+    app.state.adapters = adapters
+    logger.info(
+        f"Server ready on {config.host}:{config.port} — "
+        f"engines: {list(adapters.keys())}"
+    )
     yield
     logger.info("Shutting down server...")
-    await adapter.shutdown()
+    for name, adapter in adapters.items():
+        try:
+            await adapter.shutdown()
+            logger.info(f"{name} adapter shut down")
+        except Exception as e:
+            logger.warning(f"{name} adapter shutdown error: {e}")
     logger.info("Server shutdown complete")
 
 
@@ -60,19 +83,24 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return JSONResponse({"status": "healthy", "engine": "parakeet"})
+    engines = list(app.state.adapters.keys())
+    return JSONResponse({"status": "healthy", "engines": engines})
 
 
 @app.get("/v1/status")
 async def status():
-    adapter_type = type(app.state.adapter).__name__
+    engine_info = {}
+    for name, adapter in app.state.adapters.items():
+        engine_info[name] = {
+            "adapter": type(adapter).__name__,
+            "mock": type(adapter).__name__ == "MockParakeetAdapter",
+        }
     return JSONResponse(
         {
-            "engine": "parakeet",
-            "adapter": adapter_type,
+            "engines": engine_info,
+            "default_engine": "parakeet",
             "model": config.parakeet_model,
             "gpu_device": config.gpu_device_id,
-            "mock": adapter_type == "MockParakeetAdapter",
         }
     )
 
@@ -96,7 +124,45 @@ async def transcription_websocket(websocket: WebSocket):
     try:
         await session.start()
 
-        adapter = app.state.adapter
+        # Wait for session.start message to know which engine to use
+        while session.is_running:
+            try:
+                data = await websocket.receive()
+                if data["type"] == "websocket.disconnect":
+                    return
+                msg_data = data.get("text") or data.get("bytes")
+                if msg_data is None:
+                    continue
+                if isinstance(msg_data, str):
+                    keep_open = await session.handle_message(msg_data)
+                    if not keep_open:
+                        return
+                    # Once session.start is handled, engine is set
+                    if session._is_session_started:
+                        break
+                elif isinstance(msg_data, bytes):
+                    keep_open = await session.handle_message(msg_data)
+                    if not keep_open:
+                        return
+            except WebSocketDisconnect:
+                logger.info(f"[{session_id}] Client disconnected before session.start")
+                return
+
+        engine_name = session.engine
+        adapters = app.state.adapters
+        adapter = adapters.get(engine_name)
+
+        if adapter is None:
+            available = list(adapters.keys())
+            await session.send_error(
+                "unknown_engine",
+                f"Engine '{engine_name}' not available. Available: {available}",
+                fatal=True,
+            )
+            return
+
+        logger.info(f"[{session_id}] Using engine: {engine_name}")
+
         audio_queue = session.get_audio_queue()
 
         async def audio_chunks():
@@ -141,8 +207,6 @@ async def transcription_websocket(websocket: WebSocket):
                 logger.error(f"[{session_id}] Error handling message: {e}")
                 await session.send_error("server_error", str(e), fatal=False)
 
-        # Let the adapter finish processing remaining audio and emit final transcript.
-        # audio_chunks() will stop yielding once session.is_running is False.
         try:
             await asyncio.wait_for(transcript_task, timeout=10.0)
         except asyncio.TimeoutError:

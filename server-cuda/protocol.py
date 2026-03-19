@@ -128,10 +128,12 @@ def is_binary_audio_frame(data: str | bytes) -> bool:
     return isinstance(data, bytes) and len(data) > 0
 
 
-def build_session_started(session_id: str, server_host: str) -> SessionStartedMessage:
+def build_session_started(
+    session_id: str, server_host: str, engine: str = "parakeet"
+) -> SessionStartedMessage:
     return SessionStartedMessage(
         sessionId=session_id,
-        server={"engine": "parakeet", "host": server_host},
+        server={"engine": engine, "host": server_host},
     )
 
 

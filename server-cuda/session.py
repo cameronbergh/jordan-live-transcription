@@ -47,6 +47,7 @@ class TranscriptionSession:
         self._audio_queue: asyncio.Queue = asyncio.Queue(maxsize=500)
         self._segment_counter = 0
         self._session_start_ms: int = 0
+        self.engine: str = "parakeet"
 
     async def send_json(self, obj) -> None:
         await self._send_callback(serialize_message(obj))
@@ -60,7 +61,9 @@ class TranscriptionSession:
 
     async def send_session_started(self) -> None:
         self._is_session_started = True
-        msg = build_session_started(self.session_id, config.server_hostname)
+        msg = build_session_started(
+            self.session_id, config.server_hostname, engine=self.engine
+        )
         await self.send_json(msg)
 
     async def handle_message(self, data: str | bytes) -> bool:
@@ -97,6 +100,7 @@ class TranscriptionSession:
         self.session_id = msg.get("sessionId", self.session_id)
         self.audio_config = msg.get("audio", {})
         self.transcription_config = msg.get("transcription", {})
+        self.engine = self.transcription_config.get("engine", "parakeet")
         await self.send_session_started()
         await self.send_status(SessionState.LISTENING, "Listening for audio")
         self._is_running = True

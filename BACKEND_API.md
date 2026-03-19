@@ -10,8 +10,10 @@ The backend server receives live audio, performs speech recognition, and streams
 - **Primary host:** Linux GPU box `cameron-ms-7b17`
 - **Primary hardware target:** 2x RTX 3060 12GB
 - **Fallback / alternative host:** second Linux box with 2x 2080 Ti
-- **Speech stack direction:** regular NVIDIA Parakeet ecosystem / repo
-- **Non-goals for now:** MLX Audio Swift backend, llama.cpp / GGUF Parakeet path
+- **Engines:**
+  - **Parakeet** (`nvidia/parakeet-ctc-0.6b`) — NVIDIA CTC model, runs in-process via NeMo on `cuda:0`
+  - **Voxtral Realtime 4B** (`mistralai/Voxtral-Mini-4B-Realtime-2602`) — Mistral streaming ASR model (Apache 2.0 open weights), served by vLLM on `cuda:1`
+- **Non-goals for now:** MLX Audio Swift backend, llama.cpp / GGUF Parakeet path, cloud API transcription
 
 ## Architecture
 - **Client:** iPhone app
@@ -63,13 +65,21 @@ Sent once after connection opens.
   },
   "transcription": {
     "partials": true,
-    "language": null
+    "language": null,
+    "engine": "parakeet"
   },
   "client": {
     "platform": "ios",
     "appVersion": "0.1.0"
   }
 }
+```
+
+The `engine` field selects the transcription backend. Valid values:
+- `"parakeet"` (default) — NVIDIA Parakeet CTC, runs on local GPU
+- `"voxtral"` — Voxtral Realtime 4B via local vLLM, runs on local GPU
+
+If omitted, defaults to `"parakeet"`. If the requested engine is not available, the server responds with a fatal error.
 ```
 
 ### 2. audio.append
@@ -105,7 +115,7 @@ Optional keepalive.
 ## Server → Client Messages
 
 ### 1. session.started
-Acknowledges configuration.
+Acknowledges configuration. The `engine` field echoes back which engine was selected for this session.
 
 ```json
 {
@@ -241,9 +251,9 @@ For MVP:
 ## Open Choices
 Still undecided:
 - exact Linux host to prioritize first in practice (3060 box vs 2080 Ti box)
-- exact NVIDIA Parakeet serving/runtime approach
 - auth model for the API (none on LAN for dev vs token-based)
 - whether to support multiple simultaneous clients in v1
+- quality/latency comparison between Parakeet and Voxtral on real speech
 
 ## Proposed First Build Order
 1. implement WebSocket server skeleton

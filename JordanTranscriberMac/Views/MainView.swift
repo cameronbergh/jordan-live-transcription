@@ -181,6 +181,19 @@ struct SettingsPopover: View {
 
             Divider()
 
+            Text("Engine")
+                .font(.headline)
+
+            Picker("Model", selection: $appState.selectedEngine) {
+                ForEach(AppState.availableEngines, id: \.id) { engine in
+                    Text(engine.label).tag(engine.id)
+                }
+            }
+            .pickerStyle(.radioGroup)
+            .disabled(appState.isActive)
+
+            Divider()
+
             Text("Display")
                 .font(.headline)
 

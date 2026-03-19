@@ -9,6 +9,12 @@ scipy>=1.12.0
 python-multipart>=0.0.9
 pydantic>=2.0.0
 
+# Voxtral engine uses vLLM's /v1/realtime WebSocket endpoint.
+# websockets (already listed above) is the only dependency needed.
+# vLLM itself runs as a separate service on the GPU machine:
+#   pip install vllm soxr librosa soundfile
+#   vllm serve mistralai/Voxtral-Mini-4B-Realtime-2602 --enforce-eager
+
 # PyTorch with CUDA 12.x support (install on GPU machine):
 #   pip install torch --index-url https://download.pytorch.org/whl/cu121
 # Or install from system package manager if CUDA is configured.
