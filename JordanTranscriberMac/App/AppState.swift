@@ -15,6 +15,8 @@ final class AppState: ObservableObject {
     @Published var serverPort: Int = 8765
     @Published var selectedEngine: String = "parakeet"
     @Published var fontSize: CGFloat = 18
+    @Published var connectedClients: Int = 0
+    @Published var activeModel: String = ""
 
     static let availableEngines: [(id: String, label: String)] = [
         ("parakeet", "Parakeet (Local GPU)"),
@@ -48,6 +50,20 @@ final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
 
+        wsService.connectedClientsSubject
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] count in
+                self?.connectedClients = count
+            }
+            .store(in: &cancellables)
+
+        wsService.activeModelSubject
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] model in
+                self?.activeModel = model
+            }
+            .store(in: &cancellables)
+
         audioService.onChunk = { [weak self] chunk in
             self?.wsService.sendAudioChunk(chunk)
         }
@@ -70,6 +86,8 @@ final class AppState: ObservableObject {
     func stop() {
         audioService.stop()
         wsService.disconnect()
+        connectedClients = 0
+        activeModel = ""
     }
 
     func clearTranscript() {

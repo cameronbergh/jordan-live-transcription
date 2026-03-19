@@ -34,6 +34,7 @@ class TranscriptionSession:
         websocket,
         session_id: Optional[str] = None,
         send_callback: Optional[Callable[[str], Awaitable[None]]] = None,
+        connected_clients_getter: Optional[Callable[[], int]] = None,
     ):
         self.websocket = websocket
         self.session_id = session_id or str(uuid.uuid4())
@@ -48,6 +49,7 @@ class TranscriptionSession:
         self._segment_counter = 0
         self._session_start_ms: int = 0
         self.engine: str = "parakeet"
+        self._connected_clients_getter = connected_clients_getter
 
     async def send_json(self, obj) -> None:
         await self._send_callback(serialize_message(obj))
@@ -59,10 +61,11 @@ class TranscriptionSession:
     async def send_error(self, code: str, message: str, fatal: bool = False) -> None:
         await self.send_json(build_error(code, message, fatal))
 
-    async def send_session_started(self) -> None:
+    async def send_session_started(self, connected_clients: int = 0) -> None:
         self._is_session_started = True
         msg = build_session_started(
-            self.session_id, config.server_hostname, engine=self.engine
+            self.session_id, config.server_hostname, engine=self.engine,
+            connected_clients=connected_clients,
         )
         await self.send_json(msg)
 
@@ -101,7 +104,8 @@ class TranscriptionSession:
         self.audio_config = msg.get("audio", {})
         self.transcription_config = msg.get("transcription", {})
         self.engine = self.transcription_config.get("engine", "parakeet")
-        await self.send_session_started()
+        count = self._connected_clients_getter() if self._connected_clients_getter else 0
+        await self.send_session_started(connected_clients=count)
         await self.send_status(SessionState.LISTENING, "Listening for audio")
         self._is_running = True
         self._session_start_ms = int(asyncio.get_event_loop().time() * 1000)

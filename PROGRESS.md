@@ -429,3 +429,48 @@ Voxtral Realtime 4B was architecturally incompatible with the installed vLLM ver
 - 1 final transcript: *"see a lot of mediocre politicians. They get elected to high office and then we're all"*
 - Clean WebSocket shutdown, no errors
 - Server: WhisperLive on `cuda:1` with `large-v3-turbo` via `faster-whisper`, Jordan server on `cuda:0` with Parakeet
+
+## 2026-03-19 (Multi-Client & Status Bar)
+
+### Multi-Client Support Confirmed
+
+Both transcription engines already support multiple concurrent WebSocket connections:
+- **Parakeet**: Each session gets its own asyncio task. GPU inference runs via `run_in_executor` (thread pool), so concurrent clients serialize on the GPU — works correctly but latency increases linearly.
+- **WhisperLive**: Each session opens its own upstream WebSocket to WhisperLive on port 9090. WhisperLive natively supports up to 4 concurrent clients.
+
+No architectural changes were needed to *enable* multi-client — the server already handled it.
+
+### Server Connection Tracking & Broadcasting
+
+Added active connection tracking and real-time client count broadcasting:
+
+**`server.py`**:
+- New `active_sessions: dict[str, WebSocket]` — registers every WebSocket on connect, removes on disconnect
+- `broadcast_server_info()` — sends updated client count + engine list to **all** connected clients whenever someone joins or leaves
+- `/v1/status` REST endpoint now includes `connectedClients` count
+
+**`protocol.py`**:
+- New `server.info` message type: `{"type": "server.info", "connectedClients": 2, "engines": ["parakeet", "whisperlive"]}`
+- `session.started` response now includes `connectedClients` in the `server` payload
+
+**`session.py`**:
+- New `connected_clients_getter` callback parameter — snapshots the current count at `session.start` time
+
+### macOS Status Bar Enhancements
+
+Updated the macOS client status bar to show engine name and connected client count:
+
+**`WebSocketService.swift`**:
+- New Combine subjects: `connectedClientsSubject`, `activeModelSubject`
+- Parses `session.started` (`server.engine` + `server.connectedClients`) and `server.info` messages
+
+**`AppState.swift`**:
+- New `@Published` properties: `connectedClients`, `activeModel`
+- Subscribes to WS subjects; resets on disconnect
+
+**`MainView.swift`**:
+- Status bar now displays: `🟢 Listening · Parakeet · 2 clients` (with proper singular/plural)
+- Model names mapped to display names: `parakeet` → "Parakeet", `whisperlive` → "WhisperLive"
+
+**Build & deploy**: macOS client builds successfully (`BUILD SUCCEEDED`). Server code deployed to `cameron-ms-7b17:8765` and restarted with both engines online.
+

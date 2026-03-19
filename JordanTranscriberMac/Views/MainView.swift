@@ -134,6 +134,22 @@ struct StatusBar: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            if !appState.activeModel.isEmpty {
+                Text("·")
+                    .foregroundStyle(.quaternary)
+                Text(modelDisplayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if appState.connectedClients > 0 {
+                Text("·")
+                    .foregroundStyle(.quaternary)
+                Text("\(appState.connectedClients) client\(appState.connectedClients == 1 ? "" : "s")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Spacer()
 
             if !appState.transcriptSegments.isEmpty {
@@ -145,6 +161,14 @@ struct StatusBar: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(.bar)
+    }
+
+    private var modelDisplayName: String {
+        switch appState.activeModel {
+        case "parakeet": return "Parakeet"
+        case "whisperlive": return "WhisperLive"
+        default: return appState.activeModel
+        }
     }
 
     private var statusColor: Color {

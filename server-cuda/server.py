@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from config import config
 from parakeet_adapter import create_parakeet_adapter, TranscriptionAdapter
+from protocol import serialize_message, build_server_info
 
 from session import TranscriptionSession
 
@@ -20,6 +21,24 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger("jordan_server")
+
+# ── Connection tracking ──────────────────────────────────────────────
+# Maps session_id → WebSocket for all active connections
+active_sessions: dict[str, WebSocket] = {}
+
+
+async def broadcast_server_info():
+    """Send current connection count + available engines to every connected client."""
+    engines = list(app.state.adapters.keys())
+    msg = serialize_message(build_server_info(len(active_sessions), engines))
+    dead: list[str] = []
+    for sid, ws in active_sessions.items():
+        try:
+            await ws.send_text(msg)
+        except Exception:
+            dead.append(sid)
+    for sid in dead:
+        active_sessions.pop(sid, None)
 
 
 @asynccontextmanager
@@ -102,6 +121,7 @@ async def status():
             "default_engine": "parakeet",
             "model": config.parakeet_model,
             "gpu_device": config.gpu_device_id,
+            "connectedClients": len(active_sessions),
         }
     )
 
@@ -111,6 +131,10 @@ async def transcription_websocket(websocket: WebSocket):
     await websocket.accept()
     session_id = str(int(time.time() * 1000))
 
+    # Register this connection
+    active_sessions[session_id] = websocket
+    logger.info(f"[{session_id}] New WebSocket connection (clients: {len(active_sessions)})")
+
     async def send_text(text: str):
         await websocket.send_text(text)
 
@@ -118,12 +142,14 @@ async def transcription_websocket(websocket: WebSocket):
         websocket=websocket,
         session_id=session_id,
         send_callback=send_text,
+        connected_clients_getter=lambda: len(active_sessions),
     )
-
-    logger.info(f"[{session_id}] New WebSocket connection")
 
     try:
         await session.start()
+
+        # Broadcast updated client count to everyone
+        await broadcast_server_info()
 
         # Wait for session.start message to know which engine to use
         while session.is_running:
@@ -224,11 +250,15 @@ async def transcription_websocket(websocket: WebSocket):
         logger.error(f"[{session_id}] WebSocket error: {e}")
     finally:
         await session.stop()
+        # Unregister this connection
+        active_sessions.pop(session_id, None)
+        logger.info(f"[{session_id}] Session closed (clients: {len(active_sessions)})")
         try:
             await websocket.close()
         except Exception:
             pass
-        logger.info(f"[{session_id}] Session closed")
+        # Broadcast updated count to remaining clients
+        await broadcast_server_info()
 
 
 def main():

@@ -76,8 +76,8 @@ Sent once after connection opens.
 ```
 
 The `engine` field selects the transcription backend. Valid values:
-- `"parakeet"` (default) — NVIDIA Parakeet CTC, runs on local GPU
-- `"voxtral"` — Voxtral Realtime 4B via local vLLM, runs on local GPU
+- `"parakeet"` (default) — NVIDIA Parakeet TDT, runs on local GPU
+- `"whisperlive"` — WhisperLive (large-v3-turbo via faster-whisper), runs on local GPU
 
 If omitted, defaults to `"parakeet"`. If the requested engine is not available, the server responds with a fatal error.
 ```
@@ -123,7 +123,8 @@ Acknowledges configuration. The `engine` field echoes back which engine was sele
   "sessionId": "abc123",
   "server": {
     "engine": "parakeet",
-    "host": "cameron-ms-7b17"
+    "host": "cameron-ms-7b17",
+    "connectedClients": 1
   }
 }
 ```
@@ -197,6 +198,17 @@ Optional keepalive reply.
 }
 ```
 
+### 7. server.info
+Broadcast to all connected clients whenever a client connects or disconnects.
+
+```json
+{
+  "type": "server.info",
+  "connectedClients": 2,
+  "engines": ["parakeet", "whisperlive"]
+}
+```
+
 ## MVP Transcript Semantics
 For MVP, the backend should emit:
 - partial transcript updates while speech is active
@@ -252,7 +264,7 @@ For MVP:
 Still undecided:
 - exact Linux host to prioritize first in practice (3060 box vs 2080 Ti box)
 - auth model for the API (none on LAN for dev vs token-based)
-- whether to support multiple simultaneous clients in v1
+- whether to support multiple simultaneous clients in v1 — **RESOLVED**: both engines support it; server now tracks and broadcasts client count
 - quality/latency comparison between Parakeet and Voxtral on real speech
 
 ## Proposed First Build Order

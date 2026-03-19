@@ -78,6 +78,14 @@
 - The two GPUs on the 3060 box are now fully utilized: GPU 0 for Parakeet, GPU 1 for WhisperLive.
 - WhisperLive uses the `large-v3-turbo` Whisper model — fast inference via CTranslate2 under the hood.
 
+## Multi-Client Support & Connection Tracking
+- Both engines support multiple concurrent WebSocket sessions out of the box — no architectural changes needed.
+- Parakeet serializes GPU inference across sessions via thread pool (`run_in_executor`). Latency increases linearly with concurrent clients but doesn't crash.
+- WhisperLive natively supports up to 4 concurrent clients (each gets its own upstream WebSocket to port 9090).
+- Server tracks active connections in `active_sessions` dict and broadcasts `server.info` (client count + engine list) to all clients on connect/disconnect.
+- `session.started` response now includes `connectedClients` in the `server` payload, so clients know the count immediately.
+- macOS client status bar shows active engine name and connected client count alongside connection state.
+
 ## Open
 - Which Linux box should be the first real deployment target? (dual-3060 box is currently in use)
 - Exact restore gesture for blackout mode.

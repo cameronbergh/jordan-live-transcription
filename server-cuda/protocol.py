@@ -15,6 +15,7 @@ class MessageType(str, Enum):
     ERROR = "error"
     PING = "ping"
     PONG = "pong"
+    SERVER_INFO = "server.info"
 
 
 @dataclass
@@ -96,6 +97,13 @@ class PongMessage:
     timestamp: int = 0
 
 
+@dataclass
+class ServerInfoMessage:
+    type: str = "server.info"
+    connectedClients: int = 0
+    engines: list = field(default_factory=list)
+
+
 def serialize_message(obj: Any) -> str:
     if hasattr(obj, "__dataclass_fields__"):
         return json.dumps(_dataclass_to_dict(obj), ensure_ascii=False)
@@ -129,11 +137,12 @@ def is_binary_audio_frame(data: str | bytes) -> bool:
 
 
 def build_session_started(
-    session_id: str, server_host: str, engine: str = "parakeet"
+    session_id: str, server_host: str, engine: str = "parakeet",
+    connected_clients: int = 0,
 ) -> SessionStartedMessage:
     return SessionStartedMessage(
         sessionId=session_id,
-        server={"engine": engine, "host": server_host},
+        server={"engine": engine, "host": server_host, "connectedClients": connected_clients},
     )
 
 
@@ -171,3 +180,7 @@ def build_final_transcript(
 
 def build_pong(timestamp: int) -> PongMessage:
     return PongMessage(timestamp=timestamp)
+
+
+def build_server_info(connected_clients: int, engines: list[str]) -> ServerInfoMessage:
+    return ServerInfoMessage(connectedClients=connected_clients, engines=engines)

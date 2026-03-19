@@ -34,6 +34,8 @@ final class WebSocketService: NSObject {
 
     let transcriptSubject = PassthroughSubject<TranscriptEvent, Never>()
     let stateSubject = CurrentValueSubject<ConnectionState, Never>(.disconnected)
+    let connectedClientsSubject = CurrentValueSubject<Int, Never>(0)
+    let activeModelSubject = CurrentValueSubject<String, Never>("")
 
     private var reconnectAttempts = 0
     private let maxReconnectAttempts = 10
@@ -144,6 +146,20 @@ final class WebSocketService: NSObject {
         switch type {
         case "session.started":
             stateSubject.send(.listening)
+            // Extract engine and connected clients from server payload
+            if let server = json["server"] as? [String: Any] {
+                if let engine = server["engine"] as? String {
+                    activeModelSubject.send(engine)
+                }
+                if let count = server["connectedClients"] as? Int {
+                    connectedClientsSubject.send(count)
+                }
+            }
+
+        case "server.info":
+            if let count = json["connectedClients"] as? Int {
+                connectedClientsSubject.send(count)
+            }
 
         case "transcript.partial", "transcript.final":
             let event = TranscriptEvent(

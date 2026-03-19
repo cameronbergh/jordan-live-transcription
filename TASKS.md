@@ -27,6 +27,8 @@
 - [x] Clone WhisperLive and integrate as second transcription engine
 - [x] Create whisperlive_adapter.py, deploy_whisperlive.sh, run_whisperlive.sh
 - [x] Deploy WhisperLive to GPU box and verify end-to-end transcription with large-v3-turbo
+- [x] Add server-side connection tracking (`active_sessions`) and `server.info` broadcast
+- [x] Update macOS status bar to show engine name and connected client count
 - [ ] Lock primary host choice between the dual-3060 box and dual-2080 Ti box
 - [ ] Refactor iOS client transcription layer to talk to backend service
 
@@ -40,6 +42,7 @@
 - [ ] Complete iOS client to WebSocket backend integration
 - [ ] Improve streaming transcript quality (larger inference windows, sliding window with overlap)
 - [ ] Compare Parakeet vs WhisperLive transcription quality and latency on same audio
+- [ ] Test multi-client scenarios (2+ simultaneous connections) with both engines
 
 ## Blockers
 - `RealParakeetAdapter` CTC decoding — **FIXED**: Replaced broken manual decode with NeMo's `ctc_decoder_predictions_tensor()`. End-to-end real transcription confirmed working on `nvidia/parakeet-ctc-0.6b` via GPU box.
