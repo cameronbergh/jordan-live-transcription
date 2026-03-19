@@ -54,10 +54,18 @@
 - No third-party dependencies — only Apple frameworks (SwiftUI, AVFoundation, Foundation, Combine).
 - XcodeGen config at `project-mac.yml`, targets macOS 14+ (Sonoma).
 
-## CTC Decoding
-- NeMo's `ctc_decoder_predictions_tensor()` is the correct API for decoding CTC logits to text. It handles blank removal, consecutive duplicate collapse, and BPE detokenization internally.
-- Manual CTC decode approaches were tried and failed due to: wrong blank token ID assumption (0 vs 1024), missing CTC deduplication, and inability to locate the tokenizer on the model object.
-- On NeMo 2.7.0 (GPU box), `ctc_decoder_predictions_tensor` works correctly.
+## CTC → TDT Model Upgrade
+- Replaced `nvidia/parakeet-ctc-0.6b` with `nvidia/parakeet-tdt-0.6b-v2`.
+- TDT (Token-and-Duration Transducer) predicts both tokens and durations, avoiding the CTC "blank frame" overhead. The 0.6B v2 variant is #1 on HuggingFace ASR leaderboard (6.05% WER).
+- Switched from `EncDecCTCModel` to `ASRModel.from_pretrained()` which auto-detects the model class (returns `EncDecRNNTBPEModel` for TDT).
+- Now use `model.transcribe()` instead of manual forward pass + CTC decode. This handles preprocessing and decoding internally, works for CTC/RNNT/TDT uniformly.
+- Had to disable CUDA graph decoder on the GPU box — NeMo 2.7.0's TDT label-looping decoder calls `cu_call()` which returns fewer values than NeMo expects, producing silent empty hypotheses. Disabling forces eager-mode fallback with no quality loss.
+
+## Streaming Buffer Strategy
+- The original 0.5s context window was the primary cause of poor transcription quality — ASR models need several seconds of context.
+- New approach: accumulate audio in a growing buffer, run `model.transcribe()` every 1s of new audio on the full buffer (min 2s context).
+- When buffer exceeds 30s, finalize the segment and slide the window keeping 10s overlap for continuity.
+- Partials reuse the same `segmentId` so the macOS client's `AppState.handleTranscriptEvent()` updates in-place; finals commit the segment.
 
 ## Multi-Engine Architecture
 - The server now supports multiple transcription engines via a generalized `TranscriptionAdapter` ABC.
@@ -74,5 +82,4 @@
 - Exact restore gesture for blackout mode.
 - Local persistence design when logging is enabled.
 - Haptic feedback on blackout toggle.
-- Streaming transcript quality: each 0.5s chunk is transcribed independently, producing fragmented text. Larger inference windows or sliding-window overlap would improve coherence.
 - Voxtral vs Parakeet quality comparison not yet done — need real-world A/B test once both are deployed.

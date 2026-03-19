@@ -375,3 +375,27 @@ Added Voxtral Realtime 4B as a second transcription engine alongside Parakeet. V
 - Updated `scripts/run_server.sh` — Now prints vLLM config and passes `VLLM_HOST`/`VLLM_PORT` env vars.
 
 **Deployment pending**: SSH access to `cameron-ms-7b17` was unavailable during this session. Scripts and code are ready; deployment needs SSH keys loaded.
+
+### Model Upgrade & Streaming Quality Fix
+
+Upgraded ASR model from `nvidia/parakeet-ctc-0.6b` to `nvidia/parakeet-tdt-0.6b-v2` (TDT = Token-and-Duration Transducer) and rewrote the streaming inference pipeline.
+
+**Model change**:
+- `ASRModel.from_pretrained()` replaces `EncDecCTCModel.from_pretrained()` (auto-detects model class)
+- `model.transcribe()` replaces manual forward pass + hand-rolled CTC decode
+- Disabled CUDA graph decoder to work around `cu_call()` return-value mismatch in NeMo 2.7.0 on the GPU box
+- TDT 0.6B v2 is #1 on the HuggingFace ASR leaderboard (6.05% WER), a large accuracy improvement over CTC 0.6B
+
+**Streaming buffer rewrite** (the main quality fix):
+- Old: 0.5s minimum context, buffer discarded after each inference → fragmented, incoherent text
+- New: growing buffer with 2s min context, inference every 1s of new audio, 30s sliding window with 10s overlap
+- Partials use a stable `segmentId` so the client updates in-place; segments finalize when the window slides or the stream ends
+- All buffer/timing parameters are env-var configurable (`MIN_CONTEXT_SECS`, `INFERENCE_INTERVAL_SECS`, `MAX_CONTEXT_SECS`, `OVERLAP_SECS`)
+
+**Removed**: VAD model loading (was loaded but never used), manual `_decode_logprobs()`, `_run_inference()`
+
+**Test result** (`judge_23sec_16k_mono.wav` → GPU server → test client):
+- Clean, coherent transcription with proper punctuation and capitalization
+- Partials stream every ~1 second, progressively growing as context accumulates
+- Final transcript emitted on session close
+- Server: NeMo 2.7.0, torch 2.10.0+cu128, 2x RTX 3060

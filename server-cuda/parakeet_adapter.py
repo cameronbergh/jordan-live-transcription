@@ -1,8 +1,7 @@
 import asyncio
 import logging
-import uuid
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import AsyncIterator, Callable, Awaitable, Optional
 import time
 
@@ -146,7 +145,6 @@ class RealParakeetAdapter(TranscriptionAdapter):
     def __init__(self):
         self._initialized = False
         self._model = None
-        self._vad_model = None
         self._sample_rate = 16000
         self._device: Optional[str] = None
         self._torch = None
@@ -158,7 +156,37 @@ class RealParakeetAdapter(TranscriptionAdapter):
             self._torch = torch
         return self._torch
 
-    async def initialize(self, model_name: str = "parakeet-qn-params") -> None:
+    def _disable_cuda_graph_decoder(self):
+        """Turn off CUDA graph acceleration in the transducer decoder.
+
+        NeMo's TDT label-looping decoder compiles CUDA graphs via
+        cuda-python's cu_call().  If the installed cuda-python version
+        returns fewer values than NeMo expects, the decoder silently
+        yields empty hypotheses.  Disabling CUDA graphs forces the
+        eager-mode fallback which works on any driver.
+        """
+        try:
+            decoder = getattr(self._model, "decoding", None)
+            inner = getattr(decoder, "decoding", None)
+            if inner is not None and hasattr(inner, "use_cuda_graph_decoder"):
+                inner.use_cuda_graph_decoder = False
+                logger.info("Disabled CUDA graph decoder (eager-mode fallback)")
+                return
+
+            from omegaconf import OmegaConf, open_dict
+
+            cfg = self._model.cfg.decoding
+            with open_dict(cfg):
+                if hasattr(cfg, "greedy"):
+                    cfg.greedy.use_cuda_graph_decoder = False
+                elif hasattr(cfg, "greedy_batch"):
+                    cfg.greedy_batch.use_cuda_graph_decoder = False
+            self._model.change_decoding_strategy(cfg)
+            logger.info("Disabled CUDA graph decoder via decoding config")
+        except Exception as e:
+            logger.warning(f"Could not disable CUDA graph decoder: {e}")
+
+    async def initialize(self, model_name: str = "nvidia/parakeet-tdt-0.6b-v2") -> None:
         torch = self._import_torch()
 
         if not torch.cuda.is_available():
@@ -170,106 +198,57 @@ class RealParakeetAdapter(TranscriptionAdapter):
         torch.cuda.set_device(config.gpu_device_id)
 
         try:
-            from nemo.collections.asr.models import EncDecCTCModel
+            from nemo.collections.asr.models import ASRModel
         except ImportError as e:
             raise RuntimeError(
                 f"NeMo not installed. Install with: pip install nemo-toolkit[asr]\n"
                 f"Import error: {e}"
             )
 
-        self._model = EncDecCTCModel.from_pretrained(model_name=model_name)
+        logger.info(f"Loading ASR model: {model_name}")
+        self._model = ASRModel.from_pretrained(model_name=model_name)
         self._model = self._model.to(self._device)
         self._model.eval()
         self._model_name = model_name
 
-        try:
-            from nemo.collections.asr.models import EncDecClassificationModel
-
-            self._vad_model = EncDecClassificationModel.from_pretrained(
-                model_name=config.vad_model
-            )
-            self._vad_model = self._vad_model.to(self._device)
-            self._vad_model.eval()
-        except Exception as e:
-            logger.warning(
-                f"VAD model not available ({config.vad_model}): {e}. "
-                "Running without VAD (transcription will proceed without voice activity detection)."
-            )
-            self._vad_model = None
+        # Disable CUDA graph decoder — works around cu_call() return-value
+        # mismatch between cuda-python versions and NeMo's expectation.
+        self._disable_cuda_graph_decoder()
 
         self._initialized = True
+        logger.info(f"Model loaded: {type(self._model).__name__}")
 
     async def warm_up(self) -> None:
         if not self._initialized:
             raise RuntimeError("Adapter not initialized")
-        torch = self._import_torch()
+        loop = asyncio.get_event_loop()
+        dummy = np.zeros(self._sample_rate, dtype=np.float32)
+        await loop.run_in_executor(None, self._run_transcribe, dummy)
+        logger.info("Warm-up inference complete")
 
-        dummy_audio = torch.randn(
-            1, self._sample_rate, dtype=torch.float32, device=self._device
-        )
-        dummy_length = torch.tensor(
-            [self._sample_rate], dtype=torch.long, device=self._device
-        )
-        with torch.no_grad():
-            self._model(input_signal=dummy_audio, input_signal_length=dummy_length)
-
-        if self._vad_model is not None:
-            dummy_vad = torch.randn(
-                1, self._sample_rate, dtype=torch.float32, device=self._device
-            )
-            dummy_vad_length = torch.tensor(
-                [self._sample_rate], dtype=torch.long, device=self._device
-            )
-            with torch.no_grad():
-                self._vad_model(
-                    input_signal=dummy_vad, input_signal_length=dummy_vad_length
-                )
-
-    def _decode_logprobs(self, log_probs, encoded_len) -> str:
-        """Decode CTC log probabilities using greedy decoding + BPE detokenization.
-
-        Uses direct argmax + CTC collapse to avoid the broken GreedyCTCInfer.vocab_size
-        access in NeMo's ctc_decoder_predictions_tensor, then decodes via decode_ids_to_str
-        which uses the SentencePiece tokenizer on model.decoding.tokenizer.
-        """
-        torch = self._import_torch()
+    def _run_transcribe(self, audio_float32: np.ndarray) -> str:
+        """Run model.transcribe() on a 1-D float32 numpy array normalized to [-1, 1]."""
         try:
-            # log_probs: (B, T, V) — take argmax over vocabulary dimension
-            predicted_ids = torch.argmax(log_probs, dim=-1)  # (B, T)
+            result = self._model.transcribe([audio_float32], batch_size=1)
 
-            # Get actual sequence length from encoded_len
-            if encoded_len is not None and torch.is_tensor(encoded_len):
-                seq_len = encoded_len[0].item()
-            else:
-                seq_len = predicted_ids.shape[1]
+            if isinstance(result, tuple):
+                result = result[0]
 
-            # CTC decoding: collapse repeated tokens, remove blanks (token_id=0)
-            ids = predicted_ids[0, :seq_len].cpu().numpy()
+            if isinstance(result, list) and len(result) > 0:
+                item = result[0]
+                if hasattr(item, "text"):
+                    return str(item.text).strip()
+                return str(item).strip()
 
-            # Collapse runs of same token
-            collapsed = []
-            prev = -1
-            for token_id in ids:
-                if token_id != prev:
-                    collapsed.append(int(token_id))
-                    prev = int(token_id)
-
-            # Remove CTC blank token (blank_id for this model is 1024, vocab_size is 1024)
-            # Also guard against any tokens >= vocab_size that might cause tokenizer errors
-            blank_id = getattr(self._model.decoding, 'blank_id', 0)
-            vocab_size = getattr(self._model.tokenizer, 'vocab_size', 0)
-            text_tokens = [t for t in collapsed if t != blank_id and t < vocab_size]
-            if not text_tokens:
-                return ""
-
-            # Use decode_ids_to_str which handles SentencePiece detokenization
-            decoded_str = self._model.decoding.decode_ids_to_str(text_tokens)
-            if decoded_str:
-                return decoded_str.strip()
-            return ""
+            return str(result).strip() if result else ""
         except Exception as e:
-            logger.error(f"CTC greedy decode failed: {e}", exc_info=True)
+            logger.error(f"Transcribe failed: {e}", exc_info=True)
         return ""
+
+    async def _infer_buffer(self, loop, audio_bytes: bytearray) -> str:
+        samples = np.frombuffer(bytes(audio_bytes), dtype=np.int16)
+        audio_float = samples.astype(np.float32) / 32768.0
+        return await loop.run_in_executor(None, self._run_transcribe, audio_float)
 
     async def transcribe_stream(
         self,
@@ -279,111 +258,85 @@ class RealParakeetAdapter(TranscriptionAdapter):
     ) -> None:
         if not self._initialized:
             raise RuntimeError("Adapter not initialized")
-        torch = self._import_torch()
 
-        buffer = b""
-        min_samples = int(0.5 * self._sample_rate)
+        loop = asyncio.get_event_loop()
+
+        all_audio = bytearray()
+        last_inference_len = 0
         segment_counter = 0
-        pending_text = ""
-        segment_start_ms = 0
+        current_segment_id = f"seg-{session_id}-{segment_counter:04d}"
+        segment_start_ms = int(time.time() * 1000)
+
+        min_bytes = int(config.min_context_secs * self._sample_rate * 2)
+        interval_bytes = int(config.inference_interval_secs * self._sample_rate * 2)
+        max_bytes = int(config.max_context_secs * self._sample_rate * 2)
+        overlap_bytes = int(config.overlap_secs * self._sample_rate * 2)
 
         async for chunk in audio_chunks:
-            buffer += chunk
+            all_audio.extend(chunk)
 
-            if len(buffer) < 2:
+            if len(all_audio) < min_bytes:
                 continue
 
-            samples = np.frombuffer(buffer, dtype=np.int16)
-            if len(samples) < min_samples:
+            new_bytes = len(all_audio) - last_inference_len
+            if new_bytes < interval_bytes:
                 continue
 
-            transcript_text = self._run_inference(torch, samples)
-
-            if transcript_text:
-                segment_counter += 1
-                now_ms = int(time.time() * 1000)
-                if segment_start_ms == 0:
-                    segment_start_ms = int(
-                        now_ms - (len(samples) / self._sample_rate * 1000)
+            # Slide window: finalize current segment, keep overlap for continuity
+            if len(all_audio) > max_bytes:
+                text = await self._infer_buffer(loop, all_audio)
+                if text:
+                    now_ms = int(time.time() * 1000)
+                    await transcript_callback(
+                        TranscriptResult(
+                            segment_id=current_segment_id,
+                            text=text,
+                            start_ms=segment_start_ms,
+                            end_ms=now_ms,
+                            is_final=True,
+                        )
                     )
 
-                result = TranscriptResult(
-                    segment_id=f"seg-{session_id}-{segment_counter:04d}",
-                    text=transcript_text,
-                    start_ms=segment_start_ms,
-                    end_ms=now_ms,
-                    is_final=False,
+                all_audio = bytearray(all_audio[-overlap_bytes:])
+                last_inference_len = 0
+                segment_counter += 1
+                current_segment_id = f"seg-{session_id}-{segment_counter:04d}"
+                segment_start_ms = int(time.time() * 1000)
+                continue
+
+            text = await self._infer_buffer(loop, all_audio)
+            last_inference_len = len(all_audio)
+
+            if text:
+                now_ms = int(time.time() * 1000)
+                await transcript_callback(
+                    TranscriptResult(
+                        segment_id=current_segment_id,
+                        text=text,
+                        start_ms=segment_start_ms,
+                        end_ms=now_ms,
+                        is_final=False,
+                    )
                 )
-                await transcript_callback(result)
-                pending_text = transcript_text
-                segment_start_ms = now_ms
 
-            kept_samples = max(0, len(samples) - min_samples)
-            buffer = buffer[-kept_samples * 2 :] if kept_samples > 0 else b""
-
-        # Flush remaining buffer as a final transcript
-        if len(buffer) >= 2:
-            samples = np.frombuffer(buffer, dtype=np.int16)
-            if len(samples) >= min_samples:
-                transcript_text = self._run_inference(torch, samples)
-                if transcript_text:
-                    segment_counter += 1
-                    now_ms = int(time.time() * 1000)
-                    if segment_start_ms == 0:
-                        segment_start_ms = now_ms
-                    result = TranscriptResult(
-                        segment_id=f"seg-{session_id}-{segment_counter:04d}",
-                        text=transcript_text,
+        # Final flush
+        if len(all_audio) >= min_bytes:
+            text = await self._infer_buffer(loop, all_audio)
+            if text:
+                now_ms = int(time.time() * 1000)
+                await transcript_callback(
+                    TranscriptResult(
+                        segment_id=current_segment_id,
+                        text=text,
                         start_ms=segment_start_ms,
                         end_ms=now_ms,
                         is_final=True,
                     )
-                    await transcript_callback(result)
-                    return
-
-        if pending_text:
-            segment_counter += 1
-            now_ms = int(time.time() * 1000)
-            result = TranscriptResult(
-                segment_id=f"seg-{session_id}-{segment_counter:04d}",
-                text=pending_text,
-                start_ms=segment_start_ms,
-                end_ms=now_ms,
-                is_final=True,
-            )
-            await transcript_callback(result)
-
-    def _run_inference(self, torch, samples: np.ndarray) -> str:
-        audio_tensor = (
-            torch.from_numpy(samples.astype(np.float32) / 32768.0)
-            .unsqueeze(0)
-            .to(self._device)
-        )
-        audio_length = torch.tensor(
-            [samples.shape[0]], dtype=torch.long, device=self._device
-        )
-
-        with torch.no_grad():
-            model_output = self._model(
-                input_signal=audio_tensor, input_signal_length=audio_length
-            )
-
-        if isinstance(model_output, tuple) and len(model_output) >= 2:
-            log_probs = model_output[0]
-            encoded_len = model_output[1]
-        elif isinstance(model_output, tuple):
-            log_probs = model_output[0]
-            encoded_len = audio_length
-        else:
-            log_probs = model_output
-            encoded_len = audio_length
-
-        return self._decode_logprobs(log_probs, encoded_len)
+                )
 
     async def shutdown(self) -> None:
         self._initialized = False
         self._model = None
-        self._vad_model = None
         torch = self._import_torch()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
